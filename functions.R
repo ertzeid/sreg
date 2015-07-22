@@ -8,26 +8,28 @@ logit = function(x){1/(1+exp(-x))}
 probit = function(x){pnorm(x)}
 
 
-do2SGAM = function(fs.list,znames,islog = NULL,m,N,n,kn=KK,fam='binom',d=data,plot.me=TRUE,link='logit'){
-#fs.list = list(fs.BC,fs.share,fs.mean,fs.sd)
-#m = mobs1
+do2SGAM = function(firstStage.list, firstStageResidualVarNames, islog = NULL, originalModel,
+                   numberFirstStageReplicates, numberSecondStageReplicates, knotsList = KK,
+                   family = 'binom', data = data, plot.me=TRUE, link='logit') {
+#firstStage.list = list(fs.BC,fs.share,fs.mean,fs.sd)
+#originalModel = mobs1
 #z=c('res.BC14','res.share','res.mean','res.sd')
-#znames=z
-#N=25
-#n=100
-#kn=KK
-#fam='binom'
-#d<-data
+#firstStageResidualVarNames=z
+#numberFirstStageReplicates=25
+#numberSecondStageReplicates=100
+#knotsList=KK
+#family='binom'
+#data <- data
 	if (!is.null(islog)){
-		if (length(fs.list) != length(islog)){stop('Fix the "islog" argument')}
+		if (length(firstStage.list) != length(islog)){stop('Fix the "islog" argument')}
 	}
 	set.seed(413)
-	B = m$coef
+	B = originalModel$coef
 	library(MASS)
-	for (i in 1:N){
-		nd<-d
-		for (j in 1:length(fs.list)){
-			fs<-fs.list[[j]]
+	for (i in 1:numberFirstStageReplicates){
+		nd <- data
+		for (j in 1:length(firstStage.list)){
+			fs<-firstStage.list[[j]]
 			brep<-mvrnorm(1,mu = coefficients(fs),Sigma =  vcov(fs))
 			fs$coefficients<-brep
 			if (islog[j] == 0){
@@ -36,29 +38,29 @@ do2SGAM = function(fs.list,znames,islog = NULL,m,N,n,kn=KK,fam='binom',d=data,pl
 				varname = substr(colnames(fs$model)[1],start = 5,stop = nchar(colnames(fs$model)[1])-1)
 				zeta<-nd[,colnames(nd) == varname] -exp(predict(fs,newdata = nd,type='response'))
 			}
-			nd[,colnames(nd) == znames[j]]<-zeta	
+			nd[,colnames(nd) == firstStageResidualVarNames[j]]<-zeta	
 		}
-		if (fam=="binom"){
-			mssk =  gam(m$formula
-				,knots=kn,family=binomial(link=link),data=nd,method='REML')
+		if (family=="binom"){
+			mssk =  gam(originalModel$formula
+				,knots=knotsList,family=binomial(link=link),data=nd,method='REML')
 		}
-		if (fam=="gaussian"){
-			mssk =  gam(m$formula
-				,knots=kn,data=nd,method='REML')
+		if (family=="gaussian"){
+			mssk =  gam(originalModel$formula
+				,knots=knotsList,data=nd,method='REML')
 		}
-		if (fam=="nb"){
-			mssk =  gam(m$formula
-				,knots=kn,family=nb(),data=nd,method='REML')
+		if (family=="nb"){
+			mssk =  gam(originalModel$formula
+				,knots=knotsList,family=nb(),data=nd,method='REML')
 		}
 		if (plot.me == TRUE){
 			plot(mssk,pages=1,scheme=2)
 		}
 		print(summary(mssk))
-		Bs = mvrnorm(n,mu = mssk$coef, Sigma = mssk$Vp)
+		Bs = mvrnorm(numberSecondStageReplicates, mu = mssk$coef, Sigma = mssk$Vp)
 		B = cbind(B,t(Bs))
-		print(paste(i,'of',N))
+		print(paste(i,'of',numberFirstStageReplicates))
 	}
-	mf = m
+	mf = originalModel
 	mf$Vp<-cov(t(B))
 	return(mf)
 }
