@@ -10,7 +10,7 @@ probit = function(x){pnorm(x)}
 
 do2SGAM = function(firstStage.list, firstStageResidualVarNames, islog = NULL, originalModel,
                    numberFirstStageReplicates, numberSecondStageReplicates, knotsList = KK,
-                   family = 'binom', data = data, plot.me=TRUE, link='logit') {
+                   family = 'binom', dat = data, plot.me=TRUE, link='logit') {
 #firstStage.list = list(fs.BC,fs.share,fs.mean,fs.sd)
 #originalModel = mobs1
 #z=c('res.BC14','res.share','res.mean','res.sd')
@@ -19,7 +19,7 @@ do2SGAM = function(firstStage.list, firstStageResidualVarNames, islog = NULL, or
 #numberSecondStageReplicates=100
 #knotsList=KK
 #family='binom'
-#data <- data
+#dat <- data
 	if (!is.null(islog)){
 		if (length(firstStage.list) != length(islog)){stop('Fix the "islog" argument')}
 	}
@@ -27,7 +27,7 @@ do2SGAM = function(firstStage.list, firstStageResidualVarNames, islog = NULL, or
 	B = originalModel$coef
 	library(MASS)
 	for (i in 1:numberFirstStageReplicates){
-		nd <- data
+		nd <- dat
 		for (j in 1:length(firstStage.list)){
 			fs<-firstStage.list[[j]]
 			brep<-mvrnorm(1,mu = coefficients(fs),Sigma =  vcov(fs))
