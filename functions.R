@@ -8,47 +8,6 @@ logit = function(x){1/(1+exp(-x))}
 probit = function(x){pnorm(x)}
 
 
-#Define posterior simulation function
-do2SGAM = function(fs.list,znames,m,N,n,kn=KK,fam='binom',d=data){
-#fs.list = list(fs.BC,fs.share,fs.mean,fs.sd)
-#m = mobs1
-#z=c('res.BC14','res.share','res.mean','res.sd')
-#znames=z
-#N=25
-#n=100
-#kn=KK
-#fam='binom'
-#d<-data
-	set.seed(413)
-	B = m$coef
-	library(MASS)
-	for (i in 1:N){
-		nd<-d
-		for (j in 1:length(fs.list)){
-			fs<-fs.list[[j]]
-			brep<-mvrnorm(1,mu = coefficients(fs),Sigma =  vcov(fs))
-			fs$coefficients<-brep
-			zeta<-nd[,colnames(nd) == colnames(fs$model)[1]] -predict(fs,newdata = nd,type='response')
-			nd[,colnames(nd) == znames[j]]<-zeta	
-		}
-		if (fam=="binom"){
-			mssk =  gam(m$formula
-				,knots=kn,family=binomial,data=nd,method='REML')
-		}
-		if (fam=="nb"){
-			mssk =  gam(m$formula
-				,knots=kn,family=nb(),data=nd,method='REML')
-		}
-		plot(mssk,pages=1,scheme=2)
-		print(summary(mssk))
-		Bs = mvrnorm(n,mu = mssk$coef, Sigma = mssk$Vp)
-		B = cbind(B,t(Bs))
-		print(paste(i,'of',N))
-	}
-	mf = m
-	mf$Vp<-cov(t(B))
-	return(mf)
-}
 do2SGAM = function(fs.list,znames,islog = NULL,m,N,n,kn=KK,fam='binom',d=data,plot.me=TRUE,link='logit'){
 #fs.list = list(fs.BC,fs.share,fs.mean,fs.sd)
 #m = mobs1
@@ -228,30 +187,6 @@ vcovHC_GAM = function(m){
 
 #####################
 #Special regressors
-sreg = function(y,ex,en,I, V, data,bw = "nrd0", qupchop = 1, qdownchop = 0, absupchop = Inf, absdownchop = -Inf){
-	D<-data
-	y= D[,colnames(D)==y]
-	S = paste(ex,en,I)
-	X = paste(ex,en)
-	Z = paste(ex,I)
-
-	m = lm(as.formula(paste("V~",S)),data=D)
-	D$Uhat = V - predict(m, newdata = D)
-
-	f = density(D$Uhat,na.rm=TRUE,bw=bw)
-	getfhat <- with(f, approxfun(x, y, rule=1))
-	D$fhat = getfhat(D$Uhat)
-
-	D$That = with(D, (y - (V>=0))/fhat)
-
-	D = subset(D, That >=quantile(D$That,probs = qdownchop,na.rm=T) & That <=quantile(D$That,probs = qupchop,na.rm=T))
-	D = subset(D, That >=absdownchop & That <=absupchop)
-
-	library(AER)
-	m = ivreg(as.formula(paste('That~',X,'|',Z)),data=D)
-	
-	return(list(m = m, y=y,V = V, Uhat = D$Uhat, f = f, fhat = D$fhat ,That = D$That, D = D))
-}
 
 sregGAM = function(y, ex, en, I, resvars, V,
                    fs.list = list(), islog=NULL, znames, data,
@@ -437,16 +372,3 @@ pp = function(model, term){
 	string = paste('p',sym,pval,sep='')
 	text(xpos,ypos,string,col='blue')
 }
-
-
-makearrows = function(m, v, y, x1 = mean(m$model[,colnames(m$model)==v]), x2 = x1+sd(m$model[,colnames(m$model)==v]),yoff=1,xoff=0){
-	segments(x1, y,x2, y, col='red')
-	x = m$model
-	x[colnames(x) == v]<-x1
-	l = predict(m,newdata=x)
-	x[colnames(x) == v]<-x2
-	h = predict(m,newdata=x)
-	or = round(mean(exp(h-l)),2)
-	text(mean(c(x1,x2))+xoff,y+yoff, or)
-}
-
