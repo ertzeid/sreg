@@ -40,18 +40,18 @@ do2SGAM = function(firstStage.list, firstStageResidualVarNames, islog = NULL, or
 			}
 			nd[,colnames(nd) == firstStageResidualVarNames[j]]<-zeta	
 		}
+
 		if (family=="binom"){
 			mssk =  gam(originalModel$formula
 				,knots=knotsList,family=binomial(link=link),data=nd,method='REML')
-		}
-		if (family=="gaussian"){
+		} else if (family=="gaussian"){
 			mssk =  gam(originalModel$formula
 				,knots=knotsList,data=nd,method='REML')
-		}
-		if (family=="nb"){
+		} else if (family=="nb"){
 			mssk =  gam(originalModel$formula
 				,knots=knotsList,family=nb(),data=nd,method='REML')
 		}
+
 		if (plot.me == TRUE){
 			plot(mssk,pages=1,scheme=2)
 		}
